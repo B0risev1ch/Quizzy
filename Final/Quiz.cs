@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -13,25 +14,29 @@ namespace Final
 {
     internal class Quiz
     {
-        /*
-	    void FireQuiz(Guid quizGuid)
-	    {
+        [JsonInclude]
+        public Guid Guid { get; private set; }
+        [JsonInclude]
+        public string Name { get; private set; }
+        [JsonInclude]
+        public string Description { get; private set; }
+        [JsonInclude]
+        public List<Question> Questions { get; set; }
 
-	    }
-        */
+        //public Guid GetGuid() { return Guid; }
+        //public string GetName() { return Name; }
 
-        private Guid _guid;
-        private string _name;
-        private string _description;
-
-        public List<Question> Questions = new List<Question>(); //
+        public string GetQuizData()
+        {
+	        return $"Guid: {Guid}; Name = {Name}. Questions = {Questions.Count} ";
+        }
 
         public Quiz(string name, string description, List<Question> questions)
         {
-            _guid = Guid.NewGuid();
-            _name = name;
-            _description = description;
-            this.Questions = questions;
+            Guid = Guid.NewGuid();
+            Name = name;
+            Description = description;
+            Questions = questions;
         }
 
         public TimeSpan GetTotalTimeSpan()
@@ -44,84 +49,55 @@ namespace Final
             return totalTimeSpan;
         }
 
-        public void ReCalculateQuestionTs()
+        public void AddQuestion(Question question)
         {
-            TimeSpan totalTimeSpan = TimeSpan.Zero;
-
-            foreach (Question question in Questions)
-            {
-                totalTimeSpan += question.GetTimeSpan();
-                question.SetShiftedTimeSpan(totalTimeSpan);
-            }
-            Console.WriteLine(
-                $"New questions timeStamps: {(string.Join(", ", Questions.Select(a => a.GetShiftedTimeSpan())))}");
-        }
-
-        void AddQuestion(Question question)
-        {
-	        Questions.Add(question);
-            question.SetQuestionNumber(Questions.Count() + 1);
+            Questions.Add(question);
+            question.SetQuestionNumber(Questions.Count + 1);
         }
 
         public void RemoveQuestion(Guid qGuid) { }
 
         public void Clear() { Questions.Clear(); }
-        public Guid GetGuid() { return _guid; }
-        public string GetName() { return _name; }
-
-        public string GetQuizData()
-        {
-            return $"Guid: {_guid}; Name = {_name}. Questions = {Questions.Count()} ";
-        }
     }
 
     internal class Question
     {
-        private Guid _guid;
-        private int _questionNumber;
-        private MessageType _type;
-        private string _questionData;
-        private TimeSpan _timeToAnswer;
-        private TimeSpan _shiftedTimeSpan;
-
-        public Question(MessageType type, string questionData, TimeSpan timeToAnswer)
-        {
-            _guid = Guid.NewGuid();
-            _type = type;
-            _questionData = questionData;
-            _timeToAnswer = timeToAnswer;
-        }
-        public Guid GetGuid() { return _guid; }
-        public MessageType GetMessageType() { return _type; }
-
-        public void SetTimeSpan(TimeSpan ts)
-        { this._timeToAnswer = ts; }
-
-        public void SetShiftedTimeSpan(TimeSpan ts)
-        { this._shiftedTimeSpan = ts; }
-
-        public TimeSpan GetTimeSpan()
-        {
-	        return _timeToAnswer;
-        }
-        public TimeSpan GetShiftedTimeSpan()
-        {
-	        return _shiftedTimeSpan;
-        }
-
-        public int GetQuestionNumber()
-        {
-	        return _questionNumber;
-        }
-        public void SetQuestionNumber(int questionNumber)
-        {
-	        _questionNumber = questionNumber;
-        }
-
+        [JsonInclude]
+        public Guid Guid { get; private set; }
+        [JsonInclude]
+        public int QuestionNumber { get; private set; }
+        [JsonInclude]
+        public MessageType Type { get; private set; }
+        [JsonInclude]
+        public string QuestionData { get; private set; }
+        [JsonInclude]
+        public TimeSpan TimeToAnswer { get; private set; }
 
         public string GetQuestionData()
         {
-            return _questionData;
+	        return QuestionData;
+        }
+        
+        public Question(MessageType type, string questionData, TimeSpan timeToAnswer)
+        {
+            Guid = Guid.NewGuid();
+            Type = type;
+            QuestionData = questionData;
+            TimeToAnswer = timeToAnswer;
+        }
+
+        public void SetTimeSpan(TimeSpan ts)
+        { TimeToAnswer = ts; }
+        
+        public TimeSpan GetTimeSpan()
+        {
+            return TimeToAnswer;
+        }
+
+
+        public void SetQuestionNumber(int questionNumber)
+        {
+            QuestionNumber = questionNumber;
         }
     }
 }

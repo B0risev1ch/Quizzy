@@ -9,13 +9,16 @@ namespace Final
 {
     internal class BotMenu
     {
-        public InlineKeyboardMarkup GenerateMarkupFromQuizzes(List<Quiz> listQ)
-        {
-            var buttons = listQ.Select(k => InlineKeyboardButton.WithCallbackData(k.GetName(), k.GetGuid().ToString())).ToList();
-            buttons.Add(InlineKeyboardButton.WithCallbackData("back", "QuizGeneratedMarkupBack"));
-            return new InlineKeyboardMarkup(new[]
-                {buttons});
-        }
+	    public InlineKeyboardMarkup GenerateMarkupFromQuizzes(List<Quiz> listQ)
+	    {
+		    var buttons = listQ
+			    .Select(k => new[] { InlineKeyboardButton.WithCallbackData(k.Name, k.Guid.ToString()) })
+			    .ToList();
+
+		    buttons.Add(new[] { InlineKeyboardButton.WithCallbackData("Назад", "QuizGeneratedMarkupBack") });
+
+		    return new InlineKeyboardMarkup(buttons);
+    }
 
 
         public Dictionary<string, string> CommandDict = new()

@@ -3,32 +3,56 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
-
+using System.Text.Json.Serialization;
+using Telegram.Bot.Types.Enums;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace Final
 {
 	class FileHelper
 	{
-		private readonly string _filePath;
-
-		public FileHelper(string filePath)
+		public static void SaveQuizToFile(Quiz quiz, string filePath)
 		{
-			_filePath = filePath;
-		}
+			var directory = Path.GetDirectoryName(filePath);
+			if (!Directory.Exists(directory))
+			{
+				Directory.CreateDirectory(directory);
+			}
 
-		public async Task SaveQuizzesAsync(List<Quiz> quizzes)
+			var settings = new JsonSerializerSettings
+			{
+				Formatting = Formatting.Indented,
+				Converters = { new StringEnumConverter() }
+			};
+
+			using (var writer = new StreamWriter(filePath))
+			{
+				var serializer = new Newtonsoft.Json.JsonSerializer();
+				serializer.Formatting = Formatting.Indented;
+				serializer.Converters.Add(new StringEnumConverter());
+				serializer.Serialize(writer, quiz);
+			}
+
+        }
+        
+		public static Quiz LoadQuizFromFile(string filePath)
 		{
-			var json = JsonSerializer.Serialize(quizzes, new JsonSerializerOptions { WriteIndented = true });
-			await File.WriteAllTextAsync(_filePath, json);
-		}
+			string jsonString = File.ReadAllText(filePath);
+			
+			var options = new Newtonsoft.Json.JsonSerializerSettings
+            {
+				Converters = { new StringEnumConverter(), new MessageTypeConverter() }
+			};
 
-		public async Task<List<Quiz>> LoadQuizzesAsync()
-		{
-			if (!File.Exists(_filePath))
-				return new List<Quiz>();
+			return JsonConvert.DeserializeObject<Quiz>(jsonString, options);
+            /*
+			return Newtonsoft.Json.JsonSerializer.Deserialize<Quiz>();
+            */
 
-			var json = await File.ReadAllTextAsync(_filePath);
-			return JsonSerializer.Deserialize<List<Quiz>>(json);
-		}
-	}
+        }
+    
+        
+    }
 }
