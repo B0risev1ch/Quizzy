@@ -9,6 +9,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace Final
 {
+    //From telegram api  for JsonConvert
     public class MessageTypeConverter : Newtonsoft.Json.JsonConverter<MessageType>
     {
         public override void WriteJson(JsonWriter writer, MessageType value, Newtonsoft.Json.JsonSerializer serializer) =>

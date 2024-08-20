@@ -10,30 +10,15 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
 
-long chatId = 0; //TODO: THIS IS BOGUS! Add to list of chats where bot is Admin / has sending messages permissions
-
 BotMenu botMenu = new BotMenu();
 
-//user:
-UserData userData = new UserData();
-//:
-bool isWaitingForInput = false;
-bool isNewQuestion = false;
-bool isNewQuiz = false;
-bool isNewQuestionNewTimeSpan = false;
-Guid editingQuizGuid = Guid.NewGuid();
-Guid armedToFire = Guid.NewGuid();
-List<Quiz> quizzes = new();
-Message noAdminMessage = null;
-User user = new User();
+Users users = new Users();
 
-var fileHelper = new FileHelper();
+//TODO ну это что такое? Ну сколько можно? (с) Т.
+//var bot = new TelegramBotClient("7367447150:AAFHBjaG_Hwak_CM2v6FhHY6EL36J--Mq44"); //IsItTimeNow
 
-//List<UserData> userDataList = new();
+var bot = new TelegramBotClient("7518668541:AAHarcea1zKavuWM3Ub4J-PRYr4-o_ueoFM"); //b00terbr0d_bot
 
-Dictionary<User, Message> lastMessagesRecievedFromUsers = new Dictionary<User, Message>();
-
-var bot = new TelegramBotClient("7367447150:AAFHBjaG_Hwak_CM2v6FhHY6EL36J--Mq44");
 using var cts = new CancellationTokenSource();
 
 //Message lastMessageRecieved = null;
@@ -53,24 +38,43 @@ Console.ReadLine();
 // Send cancellation request to stop the bot
 cts.Cancel();
 
-// Each time a user interacts with the bot, this method is called
 async Task HandleUpdate(ITelegramBotClient _, Update update, CancellationToken cancellationToken)
 {
+
+    User? currentUser = users.GetUserByUpdate(update);
+
+    if (currentUser != null)
+    {
+        if (!users.UserPresented(currentUser))
+        {
+            users.AddUserData(new UserData(currentUser));
+        }
+    }
+    else
+    {
+        Console.WriteLine($"Не смог распознать пользователя {currentUser} по UpdateType = {update.Type}");
+        return;
+    }
+
     switch (update.Type)
     {
-        // A message was received
         case UpdateType.Message:
 
+            Console.WriteLine($"Handling Update for {currentUser}. UpdateType is {update.Type}");
             await HandleMessage(update.Message!);
-
             break;
 
         case UpdateType.CallbackQuery:
+
+            Console.WriteLine($"Handling Update for {currentUser}. UpdateType is {update.Type}");
             await HandleButton(update.CallbackQuery!, cts.Token);
             break;
 
         case UpdateType.MyChatMember:
             {
+                Console.WriteLine($"Handling Update for {currentUser}. UpdateType is {update.Type}");
+                UserData currentUserData = users.GetUserDataByUser(currentUser);
+
                 if (update.MyChatMember != null)
                 {
                     Console.WriteLine($"ChatMemberUpdate : " +
@@ -79,14 +83,14 @@ async Task HandleUpdate(ITelegramBotClient _, Update update, CancellationToken c
                                       $"ChatMember: {(update.ChatMember == null ? "null" : "not null")}\n" +
                                       $"MyChatMember old {(update.MyChatMember.OldChatMember)} new {(update.MyChatMember.NewChatMember)}"); //old Telegram.Bot.Types.ChatMemberAdministrator new Telegram.Bot.Types.ChatMemberLeft
 
-                    chatId = update.MyChatMember.Chat.Id;
+                    currentUserData.ChatId = update.MyChatMember.Chat.Id;
 
                     if (update.MyChatMember.NewChatMember is ChatMemberAdministrator)
-                        if (noAdminMessage != null)
+                        if (currentUserData.NoAdminMessage != null)
                         {
                             await bot.EditMessageTextAsync(
-                                noAdminMessage!.Chat.Id,
-                                noAdminMessage.MessageId,
+                                currentUserData.NoAdminMessage!.Chat.Id,
+                                currentUserData.NoAdminMessage.MessageId,
                                 $"Я теперь админ в {update.MyChatMember.Chat.Type} '{update.MyChatMember.Chat.Title}'",
                                 ParseMode.Html
                             );
@@ -94,33 +98,21 @@ async Task HandleUpdate(ITelegramBotClient _, Update update, CancellationToken c
 
                     if (update.MyChatMember.NewChatMember is ChatMemberLeft)
                     {
-                        if (noAdminMessage != null)
+                        if (currentUserData.NoAdminMessage != null)
                         {
                             await bot.EditMessageTextAsync(
-                                noAdminMessage!.Chat.Id,
-                                noAdminMessage.MessageId,
+                                currentUserData.NoAdminMessage!.Chat.Id,
+                                currentUserData.NoAdminMessage.MessageId,
                                 $"Я удалился из {update.MyChatMember.Chat.Type} '{update.MyChatMember.Chat.Title}'",
                                 ParseMode.Html
                             );
                         }
-                        //noAdminMessage ==;
                     }
-                    else
-
-                    {
-
-                        //await bot.SendTextMessageAsync($"Я теперь админ в {update.MyChatMember.Chat.Type} '{update.MyChatMember.Chat.Title}'");
-                    }
-                    //chatId = 0;
-
                 }
-
-
                 break;
             }
         default:
             Console.WriteLine(update.Type);
-            //cts.Cancel();
             break;
     }
 }
@@ -131,61 +123,50 @@ async Task HandleError(ITelegramBotClient _, Exception exception, CancellationTo
 
 async Task HandleMessage(Message msg)
 {
-
-    Message newQuizQuestionMessage;
-
-    user = msg.From;
+    User currentUser = msg.From;
     var text = msg.Text ?? string.Empty;
+    if (currentUser is null) return;
+    Console.WriteLine($"Handling Message from {currentUser}...");
 
-    if (user is null)
-        return;
-
-    /*
-	if (!userDataList.Where(a => a.).Contains(user))
-	{
-		userDataTuples.Add(user, (msg, msg.Chat));
-		Console.WriteLine($"user = {user} was not presented. Added. Total users = {userDataTuples.Count()}");
-	}
-
-	*/
-    // if(isWaitingForInputFrom(user))
-    /*  lastMessagesRecievedFromUsers.Where(a => a.UserId).First()
-	 *
-	 */
-
-    Console.WriteLine($"isWaitingForInput = {isWaitingForInput}; isNewQuiz = {isNewQuiz}; isNewQuestion = {isNewQuestion}; isNewQuestionNewTimeSpan = {isNewQuestionNewTimeSpan}");
-
-    if (isWaitingForInput)
+    if (!users.UserPresented(currentUser))
     {
-        if (isNewQuiz)
+        users.AddUserData(new UserData(currentUser));
+        Console.WriteLine($"UserData for {currentUser} not presented. Added. Users: {(string.Join(", ", users.GetUsersList()))}");
+    }
+    UserData currentUserData = users.GetUserDataByUser(currentUser);
+    if (currentUserData is null) return;
+
+    Console.WriteLine($"isWaitingForInput = {currentUserData.IsWaitingForInput}; isNewQuiz = {currentUserData.IsNewQuiz};" +
+                      $" isNewQuestion = {currentUserData.IsNewQuestion}; isNewQuestionNewTimeSpan = {currentUserData.IsNewQuestionNewTimeSpan}");
+
+    
+    if (currentUserData.IsWaitingForInput)
+    {
+        if (currentUserData.IsNewQuiz)
         {
             if (msg.Text != null)
             {
                 var newQuiz = CreateNewQuiz(msg);
-                quizzes.Add(newQuiz);
-                editingQuizGuid = newQuiz.Guid;
+                currentUserData.Quizzes.Add(newQuiz);
+                currentUserData.EditingQuizGuid = newQuiz.Guid;
             }
             else
             {
                 await bot.SendTextMessageAsync(msg.Chat.Id, $"Название должно быть текстом");
                 return;
             }
-            isNewQuiz = false;
+            currentUserData.IsNewQuiz = false;
         }
 
         TimeSpan ts = TimeSpan.Zero;
 
-        if (isNewQuestionNewTimeSpan && msg.Type == MessageType.Text)
+        if (currentUserData.IsNewQuestionNewTimeSpan && msg.Type == MessageType.Text)
         {
-            //updateTimeSpan
-
-            Console.WriteLine(quizzes.First(a => a.Guid == editingQuizGuid).Name);
+            Console.WriteLine(currentUserData.Quizzes.First(a => a.Guid == currentUserData.EditingQuizGuid).Name);
             var seconds = 0.0;
 
             if (!Double.TryParse(msg.Text, out seconds))
-
             {
-
                 await bot.SendTextMessageAsync(msg.Chat.Id, $"Формат не распознан. Введите количество секунд на ответ");
                 return;
                 ////TODO: default value from config 
@@ -194,51 +175,52 @@ async Task HandleMessage(Message msg)
 
             ts = TimeSpan.FromSeconds(seconds);
 
-            var curreentQuiz = quizzes.First(a => a.Guid == editingQuizGuid);
+            var curreentQuiz = currentUserData.Quizzes.First(a => a.Guid == currentUserData.EditingQuizGuid);
 
             curreentQuiz.Questions.Last().SetTimeSpan(ts);
 
             Console.WriteLine("\nTOTAL : " + curreentQuiz.GetTotalTimeSpan() + "\n");
 
-            Console.WriteLine($"question data: {quizzes.First(a => a.Guid == editingQuizGuid).Questions.Last().GetQuestionData()}");
+            Console.WriteLine($"question data: {currentUserData.Quizzes.First(a => a.Guid == currentUserData.EditingQuizGuid).Questions.Last().GetQuestionData()}");
 
             //isNewQuestionNewTimeSpan = false;
-            isWaitingForInput = false;
+            currentUserData.IsWaitingForInput = false;
         }
 
-        if (isNewQuestion)
+        if (currentUserData.IsNewQuestion)
         {
             CreateNewQuestion(msg);
-            isNewQuestion = false;
-            isNewQuestionNewTimeSpan = true;
+            currentUserData.IsNewQuestion = false;
+            currentUserData.IsNewQuestionNewTimeSpan = true;
             await bot.SendTextMessageAsync(msg.Chat, "Время на ответ:");
         }
 
-        if (!isWaitingForInput && isNewQuestionNewTimeSpan)
+        if (!currentUserData.IsWaitingForInput && currentUserData.IsNewQuestionNewTimeSpan)
         {
-            isNewQuestionNewTimeSpan = false;
+            currentUserData.IsNewQuestionNewTimeSpan = false;
             Task.Run(async () =>
             {
-                await bot.SendTextMessageAsync(msg.Chat.Id, $"Вопрос добавлен. {quizzes.First(quiz => quiz.Guid == editingQuizGuid).Questions.Last().GetQuestionData()}. Всего вопросов = {quizzes.First(quiz => quiz.Guid == editingQuizGuid).Questions.Count()}", replyMarkup: botMenu.NewQuizMenuMarkup);
+                await bot.SendTextMessageAsync(msg.Chat.Id, $"Вопрос добавлен. " +
+                                                            $"{currentUserData.Quizzes.First(quiz => quiz.Guid == currentUserData.EditingQuizGuid).Questions.Last().GetQuestionData()}." +
+                                                            $" Всего вопросов = {currentUserData.Quizzes.First(quiz => quiz.Guid == currentUserData.EditingQuizGuid).Questions.Count()}",
+                    replyMarkup: botMenu.NewQuizMenuMarkup);
             });
         }
     }
 
-    Console.WriteLine($"{user.FirstName} [Id: {user.Id}] sent {msg.Type} {text}");
+    Console.WriteLine($"{currentUser.FirstName} [Id: {currentUser.Id}] sent {msg.Type} {text}");
 
     if (text.StartsWith("/"))
     {
-        (string? command, string? attribute) userInput;
-        userInput = ParseCommandAndAttribute(text);
-        var command = userInput.command;
-        var message = userInput.attribute ?? "null";
-
-        await HandleCommand(user.Id, command, message);
+        await HandleCommand(currentUser.Id,
+            ParseCommandAndAttribute(text).command,
+            ParseCommandAndAttribute(text).attribute ?? "null");
     }
 }
 
 (string? command, string? attribute) ParseCommandAndAttribute(string? inputLine)
 {
+	Console.WriteLine($"Parsing command");
     if (inputLine != null)
     {
         var commandLastIndex = inputLine.IndexOf(' ') > 0 ? inputLine.IndexOf(' ') : inputLine.Length;
@@ -268,8 +250,13 @@ async Task SendQuestion(long chatId, Question question) //отправляем �
         }
         if (messageType is MessageType.Photo)
         {
-            await bot.SendPhotoAsync(chatId, new InputFileId(question.GetQuestionData()));
-            //await bot.SendTextMessageAsync(chatId, "Время на ответ: " + question.GetTimeSpan().ToString());
+	        await bot.SendPhotoAsync(chatId, new InputFileId(question.GetQuestionData()));
+	        //await bot.SendTextMessageAsync(chatId, "Время на ответ: " + question.GetTimeSpan().ToString());
+        }
+        if (messageType is MessageType.Video)
+        {
+	        await bot.SendVideoAsync(chatId, new InputFileId(question.GetQuestionData()));
+	        //await bot.SendTextMessageAsync(chatId, "Время на ответ: " + question.GetTimeSpan().ToString());
         }
     });
 }
@@ -287,6 +274,10 @@ async Task HandleCommand(long userId, string command, string? message)
 
 Quiz CreateNewQuiz(Message quizMessage)
 {
+
+    User currentUser = quizMessage.From;
+    UserData currentUserData = users.GetUserDataByUser(currentUser);
+
     Quiz newQuiz = new Quiz(quizMessage.Text, string.Empty, new List<Question>());
     Task.Run(async () =>
     {
@@ -294,13 +285,17 @@ Quiz CreateNewQuiz(Message quizMessage)
             replyMarkup: botMenu.NewQuizMenuMarkup);
     });
 
-    isWaitingForInput = false;
+    currentUserData.IsWaitingForInput = false;
 
     return newQuiz;
 }
 
 Question CreateNewQuestion(Message quizMessage)
 {
+
+    User currentUser = quizMessage.From;
+    UserData currentUserData = users.GetUserDataByUser(currentUser);
+
     string questionData = string.Empty;
     Question question;
 
@@ -310,15 +305,20 @@ Question CreateNewQuestion(Message quizMessage)
         var photo = quizMessage.Photo;
         questionData = photo[photo.Count() - 1].FileId;
     }
+    if (quizMessage.Type == MessageType.Video)
+    {
+	    var video = quizMessage.Video;
+	    questionData = video.FileId;
+    }
     if (quizMessage.Type == MessageType.Text)
         questionData = quizMessage.Text;
 
     question = new Question(quizMessage.Type, questionData, TimeSpan.Zero);
 
-    quizzes.First(quiz => quiz.Guid == editingQuizGuid).Questions.Add(question);
+    currentUserData.Quizzes.First(quiz => quiz.Guid == currentUserData.EditingQuizGuid).Questions.Add(question);
 
-    Console.WriteLine($"Вопрос {question.Guid} добавлен в квиз '{quizzes.First(quiz => quiz.Guid == editingQuizGuid).Name}', всего времени на ответы в квизе = {quizzes.First(quiz => quiz.Guid == editingQuizGuid).GetTotalTimeSpan()}");
-    
+    Console.WriteLine($"Вопрос {question.Guid} добавлен в квиз '{currentUserData.Quizzes.First(quiz => quiz.Guid == currentUserData.EditingQuizGuid).Name}'," +
+                      $" всего времени на ответы в квизе = {currentUserData.Quizzes.First(quiz => quiz.Guid == currentUserData.EditingQuizGuid).GetTotalTimeSpan()}");
     return question;
 }
 
@@ -334,11 +334,17 @@ async Task SendMenu(long userId)
         replyMarkup: markup
     );
 }
-async Task FireQuiz(Guid quizGuid)
+async Task FireQuiz(Guid? quizGuid, UserData userData)
 {
-    Quiz quiz = quizzes.First(a => a.Guid == quizGuid);
-    if (chatId != 0)
-        await SendQuestionsSequentially(chatId, quiz.Questions);
+
+    if (quizGuid is null)
+    {
+        Console.WriteLine($"Nothing armed to fire for user = {userData.User}");
+        return;
+    }
+    Quiz quiz = userData.Quizzes.First(a => a.Guid == quizGuid);
+    if (userData.ChatId != 0)
+        await SendQuestionsSequentially(userData.ChatId, quiz.Questions);
     else
     {
         Console.WriteLine("No Chats found with Administrative role/permissions to send messages");
@@ -356,6 +362,15 @@ async Task SendQuestionsSequentially(long chatId, IEnumerable<Question> question
 
 async Task HandleButton(CallbackQuery query, CancellationToken cancellationToken)
 {
+
+    User currentUser = query.From;
+    UserData currentUserData = users.GetUserDataByUser(currentUser);
+    if (currentUserData is null) { return;}
+
+    Console.WriteLine($"users Count = {users.GetUsersList().Count()};\n" +
+                      $"currentUser = {currentUser};\n" +
+                      $"currentUserData.User = {users.GetUserDataByUser(currentUser)}");
+
     Console.WriteLine(query.Data);
 
     string text = "";
@@ -364,14 +379,14 @@ async Task HandleButton(CallbackQuery query, CancellationToken cancellationToken
 
     var quizGuid = Guid.Empty;
 
-    if (Guid.TryParse(query.Data, out quizGuid) && quizzes.Any())
+    if (Guid.TryParse(query.Data, out quizGuid) && currentUserData.Quizzes.Any())
     {
         try
         {
-            Chat chat = await bot.GetChatAsync(chatId, cancellationToken);
+            Chat chat = await bot.GetChatAsync(currentUserData.ChatId, cancellationToken);
             string chatTitle = chat.Title;
 
-            text = $"Quiz data: {quizzes.First(a => a.Guid == quizGuid).GetQuizData()}";
+            text = $"Quiz data: {currentUserData.Quizzes.First(a => a.Guid == quizGuid).GetQuizData()}";
 
             markup = new InlineKeyboardMarkup(new[]
             {
@@ -382,28 +397,32 @@ async Task HandleButton(CallbackQuery query, CancellationToken cancellationToken
         catch (ApiRequestException e)
         {
             Console.WriteLine("ChatId = 0?\n" + e);
-            noAdminMessage = await bot.SendTextMessageAsync(query.Message.Chat,
+            currentUserData.NoAdminMessage = await bot.SendTextMessageAsync(query.Message.Chat,
                 "Я пока нигде не админ, удоли и добавь в нужную группу для старта квизов");
         }
     }
 
-    Console.WriteLine($"query data = {query.Data}; quizGuid = {quizGuid}; armedToFire = {armedToFire}");
+    Console.WriteLine($"query data = {query.Data}; " +
+                      $"quizGuid = {quizGuid};"
+                      + $" armedToFire = {(currentUserData.ArmedToFire == null ? "none" : currentUserData.ArmedToFire.ToString())}");
 
     if (string.Equals(query.Data, quizGuid.ToString(), StringComparison.InvariantCulture))
     {
-        armedToFire = quizGuid;
-        Console.WriteLine($"Заряжен квиз с GUID = {armedToFire}!");
+        currentUserData.ArmedToFire = quizGuid;
+        Console.WriteLine($"Заряжен квиз с GUID = {currentUserData.ArmedToFire}!");
     }
 
-    if (query.Data == $"fireQuiz_{armedToFire}")
+    if (query.Data == $"fireQuiz_{currentUserData.ArmedToFire}")
     {
-        Chat chat = await bot.GetChatAsync(chatId, cancellationToken);
+        Chat chat = await bot.GetChatAsync(currentUserData.ChatId, cancellationToken);
         string chatTitle = chat.Title;
         Console.WriteLine($"FIRED");
 
-        Task.Run(async () => await FireQuiz(armedToFire));
-
-        text = $"Выстрелили квизом с GUID = {armedToFire} в чятик {chatTitle}!";
+        if (currentUserData.ArmedToFire != null)
+        {
+            Task.Run(async () => await FireQuiz(currentUserData.ArmedToFire, currentUserData));
+            text = $"Выстрелили квизом с GUID = {currentUserData.ArmedToFire} в чятик {chatTitle}!";
+        }
 
     }
     switch (query.Data)
@@ -413,22 +432,22 @@ async Task HandleButton(CallbackQuery query, CancellationToken cancellationToken
             Console.WriteLine($"delay button pressed");
             await bot.SendTextMessageAsync(query.Message.Chat.Id, "Enter message to deliever:");
             //markup = botMenu.GenerateMarkupFromQuizzes(quizzes);
-            isWaitingForInput = true;
+            currentUserData.IsWaitingForInput = true;
             return;
 
         case "NewQuizDataCallback":
             text = "Создаём новый квиз.\nИмя квиза:";
             markup = new(Array.Empty<InlineKeyboardButton>());
-            isNewQuiz = true;
-            isWaitingForInput = true;
+            currentUserData.IsNewQuiz = true;
+            currentUserData.IsWaitingForInput = true;
             break;
 
         case "NewQuizAddQuestionDataCallBack":
             {
-                text = "Новый вопрос (text or photo):";
+                text = "Новый вопрос (text or photo or video):";
                 markup = new(Array.Empty<InlineKeyboardButton>());
-                isNewQuestion = true;
-                isWaitingForInput = true;
+                currentUserData.IsNewQuestion = true;
+                currentUserData.IsWaitingForInput = true;
                 break;
             }
 
@@ -438,67 +457,51 @@ async Task HandleButton(CallbackQuery query, CancellationToken cancellationToken
             break;
 
         case "NewQuizStopEditingDataCallBack":
-            if (!quizzes.Any())
+            if (!currentUserData.Quizzes.Any())
                 break;
             //quizzes.First(a => a.Guid == editingQuizGuid).ReCalculateQuestionTs();
 
 
             markup = botMenu.MenuMarkup;
-            isNewQuestion = false;
-            isWaitingForInput = false;
-            Quiz quiz = quizzes.First(a => a.Guid == editingQuizGuid);
+            currentUserData.IsNewQuestion = false;
+            currentUserData.IsWaitingForInput = false;
+            Quiz quiz = currentUserData.Quizzes.First(a => a.Guid == currentUserData.EditingQuizGuid);
 
-            FileHelper.SaveQuizToFile(quiz, Path.Combine(user.Username, $"{quiz.Guid}_{quiz.Name}_{DateTime.Now.TimeOfDay.ToString().Split('.')[0].Replace(':', '-')}.json"));
+            FileHelper.SaveQuizToFile(quiz, Path.Combine(currentUser.Username, $"{quiz.Guid}_{quiz.Name}_{DateTime.Now.TimeOfDay.ToString().Split('.')[0].Replace(':', '-')}.json"));
 
             text = "Quiz saved!";
             break;
 
         case "MyQuizzesDataCallback":
             text = "Мои квизы:";
-            quizzes.Clear();
+            currentUserData.Quizzes.Clear();
 
-            var path = user.Username;
+            var path = currentUser.Username;
 
             if (Directory.Exists(path))
             {
-	           var files = Directory.EnumerateFiles(path);
+                var files = Directory.EnumerateFiles(path);
 
-	            foreach (var file in files)
-	            {
-		            quizzes.Add(FileHelper.LoadQuizFromFile(file));
-		            Console.WriteLine($"{file} added to list Of Quizzes");
-                    
-	            }
+                foreach (var file in files)
+                {
+                    currentUserData.Quizzes.Add(FileHelper.LoadQuizFromFile(file));
+                    Console.WriteLine($"{file} added to list Of Quizzes");
+
+                }
             }
             else
             {
-	            text = "Нет квизов.\nМеню:";
+                text = "Нет квизов.\nМеню:";
                 Console.WriteLine($"Directory {path} does not exist.");
-	           
             }
-	        //
 
 
-            /*
-			fileHelper = new FileHelper("quizzes.json");
-            var loadedQuizzes = await fileHelper.LoadQuizzesAsync();
-			
-			foreach (var quiz in loadedQuizzes)
-			{
-				Console.WriteLine($"Loaded Quiz: {quiz.Name}, totalTimeSpan: {quiz.GetTotalTimeSpan()}");
-			}
-			*/
-            //quizzes = loadedQuizzes;
+            markup = botMenu.GenerateMarkupFromQuizzes(currentUserData.Quizzes);
 
-            markup = botMenu.GenerateMarkupFromQuizzes(quizzes);
-            //isNewQuestion = false;
-            //isWaitingForInput = false;
             break;
         case "QuizGeneratedMarkupBack":
             text = "Меню:";
             markup = botMenu.MenuMarkup;
-            //isNewQuestion = false;
-            //isWaitingForInput = false;
             break;
     }
 

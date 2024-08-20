@@ -60,30 +60,25 @@ namespace Final
         public void Clear() { Questions.Clear(); }
     }
 
-    internal class Question
+    internal class Question(MessageType type, string questionData, TimeSpan timeToAnswer)
     {
         [JsonInclude]
-        public Guid Guid { get; private set; }
+        public Guid Guid { get; private set; } = Guid.NewGuid();
+
         [JsonInclude]
         public int QuestionNumber { get; private set; }
         [JsonInclude]
-        public MessageType Type { get; private set; }
+        public MessageType Type { get; private set; } = type;
+
         [JsonInclude]
-        public string QuestionData { get; private set; }
+        public string QuestionData { get; private set; } = questionData;
+
         [JsonInclude]
-        public TimeSpan TimeToAnswer { get; private set; }
+        public TimeSpan TimeToAnswer { get; private set; } = timeToAnswer;
 
         public string GetQuestionData()
         {
 	        return QuestionData;
-        }
-        
-        public Question(MessageType type, string questionData, TimeSpan timeToAnswer)
-        {
-            Guid = Guid.NewGuid();
-            Type = type;
-            QuestionData = questionData;
-            TimeToAnswer = timeToAnswer;
         }
 
         public void SetTimeSpan(TimeSpan ts)
