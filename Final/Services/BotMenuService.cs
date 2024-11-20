@@ -3,13 +3,34 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Final.Repository;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace Final
+namespace Final.Services
 {
-    internal class BotMenu
+    internal class BotMenuService
     {
+        private readonly ITelegramBotClient _bot;
+
+        public InlineKeyboardMarkup MenuMarkup;
+        public BotMenuService(ITelegramBotClient botClient)
+        {
+            _bot = botClient;
+        }
+
+
+        public async Task SendMenu(long userId, InlineKeyboardMarkup markup)
+        {
+            var text = "Меню:";
+
+            await _bot.SendTextMessageAsync(
+                userId,
+                text,
+                replyMarkup: markup
+            );
+        }
+
         public InlineKeyboardMarkup GenerateMarkupFromQuizzes(List<Quiz> listQ)
         {
             var buttons = listQ
@@ -50,10 +71,8 @@ namespace Final
                 }
             );
 
-        public InlineKeyboardMarkup MenuMarkup;
 
-
-        public BotMenu()
+        public BotMenuService()
         {
             MenuMarkup = MainMenuMarkup;
         }

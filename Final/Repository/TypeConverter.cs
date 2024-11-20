@@ -7,12 +7,12 @@ using System.Text;
 using System.Threading.Tasks;
 using Telegram.Bot.Types.Enums;
 
-namespace Final
+namespace Final.Repository
 {
     //From telegram api  for JsonConvert
-    public class MessageTypeConverter : Newtonsoft.Json.JsonConverter<MessageType>
+    public class MessageTypeConverter : JsonConverter<MessageType>
     {
-        public override void WriteJson(JsonWriter writer, MessageType value, Newtonsoft.Json.JsonSerializer serializer) =>
+        public override void WriteJson(JsonWriter writer, MessageType value, JsonSerializer serializer) =>
             writer.WriteValue(value switch
             {
                 MessageType.Unknown => "unknown",
@@ -69,7 +69,7 @@ namespace Final
             Type objectType,
         MessageType existingValue,
             bool hasExistingValue,
-            Newtonsoft.Json.JsonSerializer serializer
+            JsonSerializer serializer
         ) =>
             JToken.ReadFrom(reader).Value<string>() switch
             {
