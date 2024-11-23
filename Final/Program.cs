@@ -1,15 +1,10 @@
 ﻿using Final;
-using Final.Interfaces;
-using Final.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Telegram.Bot;
-using Telegram.Bot.Exceptions;
-using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
+
 
 
 Log.Logger = new LoggerConfiguration()
@@ -29,7 +24,7 @@ try
 			var botApiKey = context.Configuration["Bot:ApiKey"];
 			if (string.IsNullOrEmpty(botApiKey))
 			{
-				throw new Exception("Токен бота не задан в конфигурации");
+				throw new Exception("Токен бота не задан в конфигурации!");
 			}
 
 			services.AddSingleton<ITelegramBotClient>(new TelegramBotClient(botApiKey));
